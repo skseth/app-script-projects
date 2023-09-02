@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>IWC District Dues - First Instalment for 2023-24</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css"
+      integrity="sha512-SbiR/eusphKoMVVXysTKG/7VseWii+Y3FdHrt0EpKgpToZeemhqHeZeLWLhJutz/2ut2Vw1uQEj2MbRF+TVBUA=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.3/font/bootstrap-icons.min.css"
+      integrity="sha512-YFENbnqHbCRmJt5d+9lHimyEMt8LKSNTMLSaHjvsclnZGICeY/0KYEeiHwD1Ux4Tcao0h60tdcMv+0GljvWyHg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.1.4/dist/css/datepicker.min.css"
+    />
+
+    <script type="module">
+      var clubs = [
+        "Bangalore",
+        "Bangalore Banashankari",
+        "Bangalore Blossoms",
+        "Bangalore Central",
+        "Bangalore East",
+        "Bangalore Gardenia",
+        "Bangalore HBR",
+        "Bangalore IT Corridor",
+        "Bangalore Jeevanbimanagar",
+        "Bangalore J P Nagar",
+        "Bangalore Junction",
+        "Bangalore Koramangala",
+        "Bangalore Mahalakshmipuram",
+        "Bangalore Metro",
+        "Bangalore North",
+        "Bangalore Orchards",
+        "Bangalore Peenya",
+        "Bangalore Rajamahal Vilas",
+        "Bangalore Sadashivnagar",
+        "Bangalore South",
+        "Bangalore South Parade",
+        "Bangalore South West",
+        "Bangalore Udyog",
+        "Bangalore Vijayanagar",
+        "Bangalore West",
+        "Bengaluru Gardenia",
+        "Maralur",
+        "Tumkur",
+        "Tumkur Central",
+        "Tumkur East",
+        "Bharathinagar",
+        "Chikkanayakanahalli",
+        "Gubbi",
+        "Maddur",
+        "Malavalli",
+        "Mandya",
+        "Nelamangala",
+        "Tiptur",
+        "Tirupati",
+        "Turuvekere",
+        "Vijaypura",
+      ];
+
+      var clubOptionList = "";
+      var paymentForm = null;
+
+      function getClubOptionList() {
+        if (!clubOptionList) {
+          clubOptionList =
+            "<option></option>" +
+            clubs.map((club) => `<option>${club}</option>`).join();
+        }
+
+        return clubOptionList;
+      }
+
+      class PaymentForm {
+        static inputElementNames = {
+          clubName: { tag: "select" },
+          treasurerName: {},
+          mRemittedLY: {},
+          mResignedCY: {},
+          mInductedCY: { nextField: "paymentMembers" },
+          currentClubMembers: {},
+          paymentMembers: { nextField: "paymentAmount" },
+          paymentIIW: {},
+          paymentAssociation: {},
+          paymentTriennial: {},
+          paymentSubtotal: {},
+          paymentOutsideGST: {},
+          paymentTotal: {},
+          paymentDistrict: {},
+          paymentDue: {},
+          paymentAmount: {},
+          paymentBankBranch: {},
+          paymentDate: {},
+          paymentReference: {},
+        };
+
+        currencyFormatter = new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: "INR",
+        });
+        elements = {};
+
+        constructor() {
+          this.formEl = document.getElementById("paymentForm");
+          for (var elementName in PaymentForm.inputElementNames) {
+            var elementConfig = PaymentForm.inputElementNames[elementName];
+            var tagName = elementConfig.tag || "input";
+            this.elements[elementName] = this.formEl.querySelectorAll(
+              `${tagName}[name="${elementName}"]`
+            )[0];
+          }
+
+          this.datepicker = new Datepicker(this.elements["paymentDate"], {
+            format: "dd-mm-yyyy",
+            container: "body",
+            todayHighlight: true,
+            autohide: true,
+          });
+
+          for (const club of clubs) {
+            var opt = document.createElement("option");
+            opt.value = club;
+            opt.innerHTML = club;
+            this.elements.clubName.appendChild(opt);
+          }
+
+          this.initializeEventHandlers();
+        }
+
+        initializeEventHandlers() {
+          ["mRemittedLY", "mResignedCY", "mInductedCY"].forEach(
+            (elementName) => {
+              this.elements[elementName].addEventListener("change", () => {
+                this.updateCurrentMembers();
+              });
+            }
+          );
+
+          this.elements.paymentMembers.addEventListener("change", () => {
+            this.updatePaymentDue();
+          });
+
+          this.elements.paymentAmount.addEventListener("blur", (event) => {
+            var curvalue = parseFloat(event.target.value, 10) || 0;
+            event.target.value = this.currencyFormatter.format(curvalue);
+          });
+
+          this.elements.paymentAmount.addEventListener("focus", (event) => {
+            var curvalue = event.target.value;
+            var newvalue = curvalue.replace(/[^\d.-]/g, "");
+            event.target.value = newvalue;
+            event.target.select();
+          });
+
+          let keys = Object.keys(PaymentForm.inputElementNames);
+          for (let i = 0; i < keys.length; i++) {
+            let elementName = keys[i];
+            let elementConfig = PaymentForm.inputElementNames[elementName];
+            if (elementConfig.tag) {
+              continue;
+            }
+            let nextElementName = i === keys.length - 1 ? null : keys[i + 1];
+            let nextField =
+              PaymentForm.inputElementNames[elementName].nextField;
+
+            this.elements[elementName].addEventListener("keydown", (e) => {
+              let key = e.charCode ? e.charCode : e.keyCode ? e.keyCode : 0;
+              if (key == 13) {
+                e.preventDefault();
+                // TODO: Remove jquery
+                if (nextField) {
+                  this.elements[nextField].focus();
+                } else if (nextElementName) {
+                  this.elements[nextElementName].focus();
+                }
+              }
+            });
+          }
+
+          this.formEl.addEventListener(
+            "submit",
+            (event) => {
+              //   if (!this.validateForm()) {
+              event.preventDefault();
+              event.stopPropagation();
+              //   }
+            },
+            false
+          );
+
+          let btnNewPaymentSave = document.getElementById("btnNewPaymentSave");
+          btnNewPaymentSave.addEventListener("click", (event) => {
+            this.submitPayment();
+          });
+
+          // TODO: Remove jquery dependency
+          //   $(".Screen_Data").on("click", ".BTN_Save_New_Task", (event) => {
+          //     this.submitPayment();
+          //   });
+        }
+
+        wasValidated() {
+          return this.formEl.classList.contains("was-validated");
+        }
+
+        validateRequiredPaymentFields() {
+          let is_valid = true;
+
+          let man_fields = [
+            "paymentMembers",
+            "paymentAmount",
+            "paymentBankBranch",
+            "paymentDate",
+            "paymentReference",
+          ];
+
+          for (let man_field of man_fields) {
+            let field_val = this.elements[man_field].value;
+            if (field_val && field_val.length > 0) {
+              this.mark_element_as_valid(man_field);
+            } else {
+              this.mark_element_as_invalid(man_field);
+              is_valid = false;
+            }
+          }
+
+          var paymentMembers =
+            parseInt(this.elements.paymentMembers.value) || 0;
+          if (paymentMembers == 0) {
+            this.mark_element_as_invalid("paymentMembers");
+            is_valid = false;
+          }
+
+          if (this.elements.paymentAmount.value == "₹0.00") {
+            this.mark_element_as_invalid("paymentAmount");
+            is_valid = false;
+          }
+
+          return is_valid;
+        }
+
+        validateForm() {
+          var total = this.calculateCurrentMembers();
+          var isValid =
+            event.target.checkValidity() &&
+            this.validateCurrentMembers(total) &&
+            this.validateRequiredPaymentFields();
+          event.target.classList.add("was-validated");
+          return isValid;
+        }
+
+        mark_element_as_invalid(elementName) {
+          this.elements[elementName].classList.remove("is-valid");
+          this.elements[elementName].classList.add("is-invalid");
+        }
+
+        mark_element_as_valid(elementName) {
+          this.elements[elementName].classList.remove("is-invalid");
+          this.elements[elementName].classList.add("is-valid");
+        }
+
+        calculateCurrentMembers() {
+          var remittedLY = parseInt(this.elements.mRemittedLY.value, 10) || 0;
+          var resignedCY = parseInt(this.elements.mResignedCY.value, 10) || 0;
+          var inductedCY = parseInt(this.elements.mInductedCY.value, 10) || 0;
+
+          var total = remittedLY - resignedCY + inductedCY;
+          return total;
+        }
+
+        updateCurrentMembers() {
+          var total = this.calculateCurrentMembers();
+          this.elements.currentClubMembers.value = total;
+          if (this.wasValidated()) {
+            this.validateCurrentMembers(total);
+          }
+        }
+
+        validateCurrentMembers(total) {
+          if (total > 0) {
+            this.mark_element_as_valid("currentClubMembers");
+            return true;
+          } else {
+            this.mark_element_as_invalid("currentClubMembers");
+            return false;
+          }
+        }
+
+        updatePaymentDue() {
+          var paymentValues = {};
+
+          var paymentMembers =
+            parseInt(this.elements.paymentMembers.value, 10) || 0;
+
+          paymentValues["paymentIIW"] = paymentMembers * 350;
+          paymentValues["paymentAssociation"] = paymentMembers * 60;
+          paymentValues["paymentTriennial"] = paymentMembers * 15;
+          paymentValues["paymentSubtotal"] =
+            paymentValues["paymentIIW"] +
+            paymentValues["paymentAssociation"] +
+            paymentValues["paymentTriennial"];
+          paymentValues["paymentOutsideGST"] =
+            paymentValues["paymentSubtotal"] * 0.18;
+          paymentValues["paymentTotal"] =
+            paymentValues["paymentSubtotal"] +
+            paymentValues["paymentOutsideGST"];
+          paymentValues["paymentDistrict"] = paymentMembers * 223.5;
+          paymentValues["paymentDue"] =
+            paymentValues["paymentTotal"] + paymentValues["paymentDistrict"];
+
+          for (const elementName in paymentValues) {
+            this.elements[elementName].value = this.currencyFormatter.format(
+              paymentValues[elementName]
+            );
+          }
+        }
+
+        submitPayment() {
+          if (!this.validateForm()) {
+            return false;
+          }
+
+          let showDiv = (showdivid) => {
+            ["paymentDiv", "waitingDiv", "errorDiv", "successDiv"].forEach(
+              (divid) => {
+                let div = document.getElementById(divid);
+                if (divid === showdivid) {
+                  div.style.display = "block";
+                } else {
+                  div.style.display = "none";
+                }
+              }
+            );
+          };
+
+          console.log("in submit payment");
+          var NewPayment = {};
+          for (var elementName in PaymentForm.inputElementNames) {
+            console.log(elementName);
+            NewPayment[elementName] = this.elements[elementName].value;
+          }
+          console.log(NewPayment);
+          try {
+            showDiv("waitingDiv");
+            google.script.run
+              .withSuccessHandler(function (data) {
+                showDiv("successDiv");
+                console.log(data);
+              })
+              .withFailureHandler(function (error) {
+                showDiv("errorDiv");
+                console.log(error);
+              })
+              .AddFirstPayment(NewPayment);
+          } catch (err) {
+            showDiv("errorDiv");
+            console.log(err);
+          }
+
+          return false;
+        }
+      }
+
+      function updateCurrentMembers() {
+        paymentForm.updateCurrentMembers();
+      }
+
+      let rupee = new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+      });
+
+      function showNewForm() {
+        paymentForm = new PaymentForm();
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        paymentForm = new PaymentForm();
+      });
+    </script>
+  </head>
+  <body style="background-color: rgb(146, 188, 245)">
+    <div style="width: 0px; overflow: initial; float: left">
+      <img
+        src="https://drive.google.com/uc?export=view&id=1zbML4a-KPUjje484kf9z89ywMn0pt4jl"
+        style="width: 200px"
+      />
+    </div>
+
+    <h1 class="text-center">Inner Wheel District 319</h1>
+    <h2 class="text-center">District Dues Form A - 1st Installment</h2>
+
+    <!--[Screen Data - Start]-->
+    <div class="text-center text-warning" style="display: none" id="waitingDiv">
+      <h2>Please wait ...</h2>
+    </div>
+    <div class="text-center text-error" style="display: none" id="errorDiv">
+      <h2>We encounted an error while submitting your form.</h2>
+    </div>
+    <div class="text-center text-success" style="display: none" id="successDiv">
+      <h2>Your form was submitted successfully.</h2>
+    </div>
+    <div class="container Screen Screen_Data" id="paymentDiv">
+      <form id="paymentForm" novalidate>
+        <div class="card px-3 py-3 mx-auto" style="max-width: 40rem">
+          <h3>Club Membership</h3>
+          <div class="mb-3">
+            <label for="clubName">Your Club</label>
+            <div class="input-group">
+              <span class="input-group-text">Inner Wheel Club of </span>
+              <select
+                name="clubName"
+                id="clubName"
+                class="form-select"
+                aria-label="Select Club Name"
+                required
+              >
+                <option></option>
+              </select>
+              <div class="invalid-feedback">club must be selected</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="treasurerName">Club Treasurer Name</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-person"></span>
+              </span>
+              <input
+                class="form-control"
+                name="treasurerName"
+                id="treasurerName"
+                aria-describedby="treasurerNameHelp"
+                placeholder="Enter club treasurer name"
+                required
+              />
+              <div class="invalid-feedback">
+                name of the treaurer is required
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="currentClubMembers">Current Club Strength</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-people"></span>
+              </span>
+              <input
+                class="form-control"
+                name="currentClubMembers"
+                id="currentClubMembers"
+                aria-describedby="currentClubMembersHelp"
+                placeholder="Current club members"
+                pattern="[1-9][0-9]*"
+                disabled
+              />
+              <div class="invalid-feedback">
+                current club membership cannot be negative or zero.
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="mRemittedLY">2022-23 : Total No of Members</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-people-fill"></span>
+              </span>
+              <input
+                class="form-control mRemittedLY"
+                name="mRemittedLY"
+                id="mRemittedLY"
+                placeholder="2022-23 Total Members - Dues Remitted"
+                pattern="[1-9][0-9]*"
+                required
+              />
+              <div class="invalid-feedback">
+                number of members must be provided, and cannot be zero
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="mInductedCY"
+              >2023-24 : No of New Members Inducted</label
+            >
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-clipboard-plus"></span>
+              </span>
+              <input
+                class="form-control"
+                name="mInductedCY"
+                id="mInductedCY"
+                placeholder="2023-24 Members - Inducted"
+                value="0"
+                pattern="[0-9]+"
+                required
+              />
+              <div class="invalid-feedback">please enter a valid number</div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="mResignedCY">2023-24 : No of Members Resigned</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-clipboard-minus"></span>
+              </span>
+              <input
+                class="form-control"
+                name="mResignedCY"
+                id="mResignedCY"
+                placeholder="2023-24 Members - Resigned"
+                value="0"
+                pattern="[0-9]+"
+                required
+              />
+              <div class="invalid-feedback">please enter a valid number</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card px-3 py-3 mt-4 mx-auto" style="max-width: 40rem">
+          <h3>Payment</h3>
+          <div class="mb-3">
+            <label for="paymentMembers">Members to be paid for</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-people"></span>
+              </span>
+              <input
+                class="form-control"
+                name="paymentMembers"
+                id="paymentMembers"
+                placeholder="no of members being paid for"
+                pattern="[1-9][0-9]*"
+                required
+              />
+              <div class="invalid-feedback">
+                members being paid for must be provided, and cannot be zero
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"
+                >IIW Capitation Fee (₹350 * members)</span
+              >
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentIIW"
+                id="paymentIIW"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text"
+                >Association Dues (₹60 * members)<br />inclusive of website
+                fees</span
+              >
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentAssociation"
+                id="paymentAssociation"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text"
+                >Triennial Fee (₹15 * members)</span
+              >
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentTriennial"
+                id="paymentTriennial"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text">Subtotal</span>
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentSubtotal"
+                id="paymentSubtotal"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text">GST@18%</span>
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentOutsideGST"
+                id="paymentOutsideGST"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text">Total</span>
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentTotal"
+                id="paymentTotal"
+                placeholder=""
+                disabled
+              />
+            </div>
+            <div class="input-group">
+              <span class="input-group-text"
+                >District Dues (₹223.5 * members)</span
+              >
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentDistrict"
+                id="paymentDistrict"
+                placeholder=""
+                disabled
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text">Grand Total (₹725 * members)</span>
+              <input
+                style="text-align: right"
+                class="form-control"
+                name="paymentDue"
+                id="paymentDue"
+                placeholder=""
+                disabled
+              />
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="paymentAmount">Payment Amount</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-currency-rupee"></span>
+              </span>
+              <input
+                class="form-control"
+                name="paymentAmount"
+                id="paymentAmount"
+                placeholder="Payment Amount"
+                required
+              />
+              <div class="invalid-feedback">
+                please enter a valid payment amount
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="paymentBankBranch">Bank Name and Branch</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-bank"></span>
+              </span>
+              <input
+                class="form-control"
+                name="paymentBankBranch"
+                id="paymentBankBranch"
+                placeholder="Payment bank and branch"
+                required
+              />
+              <div class="invalid-feedback">
+                please enter a valid bank / branch
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="paymentDate">Date of NEFT / Online Transfer</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <span class="bi-calendar"></span>
+              </span>
+              <input
+                class="form-control"
+                name="paymentDate"
+                id="paymentDate"
+                placeholder="Payment Date"
+                pattern="\d{1,2}-\d{1,2}-\d{4}"
+                required
+              />
+              <div class="invalid-feedback">
+                provide payment date in dd-mm-yyyy format
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="paymentReference">UTR No./ Transaction ID</label>
+            <div class="input-group">
+              <span class="input-group-text">ID</span>
+              <input
+                class="form-control"
+                name="paymentReference"
+                id="paymentReference"
+                placeholder="utr no / transaction id"
+                required
+              />
+              <div class="invalid-feedback">
+                please enter a valid transaction reference
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TODO: local storage -->
+        <!-- TODO: parameterization -->
+        <!-- TODO: externalize list of clubs -->
+        <div class="card mt-4 mx-auto" style="width: 200px">
+          <button
+            type="submit"
+            class="btn btn-primary btn_Task"
+            id="btnNewPaymentSave"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+    <!--[Screen Data - End]-->
+
+    <!-- Bootstrap 5 CSS -->
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"
+      integrity="sha512-i9cEfJwUwViEPFKdC1enz4ZRGBj8YQo6QByFTF92YXHi7waCqyexvRD75S5NVTsSiTv7rKWqG9Y5eFxmRsOn0A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <!-- Vanilla Datepicker JS -->
+    <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.1.4/dist/js/datepicker-full.min.js"></script>
+  </body>
+</html>

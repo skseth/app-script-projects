@@ -1,0 +1,53 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.nav {
+  color: #fff;
+  background-color: #999;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 2rem;
+  padding: 0 1rem;
+  display: flex;
+}
+
+.nav ul {
+  align-items: stretch;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+}
+
+.nav li {
+  align-items: center;
+  display: flex;
+}
+
+.site-title {
+  font-size: 2rem;
+}
+
+.nav a {
+  color: inherit;
+  align-items: center;
+  padding: .25rem;
+  text-decoration: none;
+  display: flex;
+}
+
+.nav li.active {
+  background-color: #555;
+}
+
+.nav li:hover {
+  background-color: #777;
+}
+
+/*# sourceMappingURL=index.798f3cfb.css.map */
